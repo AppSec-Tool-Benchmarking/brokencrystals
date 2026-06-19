@@ -1,0 +1,64 @@
+# Benchmark scan — manual trigger only. No auto-runs, no PR decoration, no pipeline failures.
+# Part of the Guidepoint AppSec Tool Benchmarking program (Phase 1).
+
+name: "AppSec Benchmark — Snyk [brokencrystals]"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snyk-code:
+    name: Snyk Code (SAST)
+    # brokencrystals uses Crystal/Lucky — Snyk may not support it. continue-on-error is set.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Create results directory
+        run: mkdir -p results/snyk
+
+      - name: Run Snyk Code scan
+        run: snyk code test --sarif-file-output=results/snyk/snyk-code.sarif --severity-threshold=low
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Upload Snyk Code results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snyk-results
+          path: results/snyk/
+
+  snyk-opensource:
+    name: Snyk Open Source (SCA)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Create results directory
+        run: mkdir -p results/snyk
+
+      - name: Run Snyk Open Source scan
+        run: snyk test --json-file-output=results/snyk/snyk-opensource.json --severity-threshold=low
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Upload Snyk Open Source results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snyk-results
+          path: results/snyk/

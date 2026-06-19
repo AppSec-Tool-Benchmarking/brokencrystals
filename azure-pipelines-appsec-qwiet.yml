@@ -1,0 +1,44 @@
+# Benchmark scan — manual trigger only. No auto-runs, no PR decoration, no pipeline failures.
+# Part of the Guidepoint AppSec Tool Benchmarking program (Phase 1).
+# Register this file as a separate Azure Pipeline in Azure DevOps.
+# NOTE: Crystal/Lucky is not a supported language for Qwiet/ShiftLeft.
+# Scan will run but is expected to produce empty or error results.
+
+trigger: none
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - checkout: self
+    fetchDepth: 0
+
+  - script: mkdir -p results/qwiet
+    displayName: "Create results directory"
+
+  - script: |
+      curl -LO https://cdn.shiftleft.io/download/sl
+      chmod +x sl
+      sudo mv sl /usr/local/bin/sl
+    displayName: "Install Qwiet (ShiftLeft) CLI"
+
+  - script: |
+      sl analyze --app brokencrystals . || true
+    displayName: "AppSec Benchmark — Qwiet [brokencrystals]"
+    continueOnError: true
+    env:
+      SHIFTLEFT_ACCESS_TOKEN: $(AZ_SHIFTLEFT_ACCESS_TOKEN)
+
+  - script: |
+      sl export --app brokencrystals --outfile results/qwiet/qwiet-results.json || true
+    displayName: "Export Qwiet results [brokencrystals]"
+    continueOnError: true
+    env:
+      SHIFTLEFT_ACCESS_TOKEN: $(AZ_SHIFTLEFT_ACCESS_TOKEN)
+
+  - task: PublishBuildArtifacts@1
+    condition: always()
+    inputs:
+      pathToPublish: results/qwiet/
+      artifactName: qwiet-results
